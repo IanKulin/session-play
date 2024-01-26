@@ -57,23 +57,28 @@ app.get("/logout", (req, res) => {
   });
 });
 
-app.get("/create/:user", (req, res) => {
+app.get("/create/:user/:password", (req, res) => {
+  if (findUser(req.params.user)) {
+    res.send(`User ${req.params.user} already exists`);
+    return;
+  }
   const user = req.params.user;
+  const password = req.params.password;
   const views = 0;
   req.session.user = user;
-  user_views.push({ user, views });
+  user_views.push({ user, password, views });
   writeUserViewFile();
   res.send(`User ${user} created & logged in`);
 });
 
-app.get("/login/:user", (req, res) => {
-  // see if this user is in the user_views array
-  if (findUser(req.params.user)) {
+app.get("/login/:user/:password", (req, res) => {
+  const user = findUser(req.params.user);
+  if (user && user.password === req.params.password) {
     req.session.user = req.params.user;
     res.send(`User ${req.params.user} logged in`);
     return;
   } else {
-    res.redirect(`/create/${req.params.user}`);
+    res.send(`Incorrect username or password`);
   }
 });
 
