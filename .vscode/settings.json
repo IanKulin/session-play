@@ -1,3 +1,6 @@
 {
-  "cSpell.words": ["keyz", "resave"]
+  "cSpell.words": ["keyz", "resave"],
+  "cSpell.ignorePaths": [
+    "**/user_views.json"
+  ],
 }
