@@ -3,9 +3,13 @@ const session = require("express-session");
 const FileStore = require("session-file-store")(session);
 const fs = require("fs");
 const app = express();
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const user_view_file = "./user_views.json";
 const cookie_name = "session_cookie";
+
+app.use(express.urlencoded({ extended: false }));
 
 let user_views = [];
 // if the user_views.json file exists, read it and parse it to user_views array
@@ -26,6 +30,12 @@ function findUser(user) {
   return user_views.find((u) => u.user === user);
 }
 
+// sanitise a string by replacing all " < and > with _ (underscore)
+// and truncating it at 20 characters
+function sanitise(str) {
+  return str.replace(/["<>]/g, "_").slice(0, 20);
+}
+
 app.use(
   session({
     secret: "your-secret-keyz", // This should be a secret, used to sign the session ID cookie
@@ -39,11 +49,17 @@ app.use(
 app.get("/", (req, res) => {
   if (req.session.user) {
     const user_view = findUser(req.session.user);
+    if (!user_view) {
+      res.send(`Error finding user, <a href="/login">try again</a>`);
+      return;
+    }
     user_view.views++;
-    res.send(`User "${req.session.user}" has ${user_view.views} views`);
+    res.send(
+      `User "${req.session.user}" has ${user_view.views} views, <a href="/">reload</a> or <a href="/logout">logout</a>`
+    );
     writeUserViewFile();
   } else {
-    res.send("Please log in");
+    res.redirect("/login");
   }
 });
 
@@ -57,29 +73,49 @@ app.get("/logout", (req, res) => {
   });
 });
 
-app.get("/create/:user/:password", (req, res) => {
-  if (findUser(req.params.user)) {
-    res.send(`User ${req.params.user} already exists`);
+app.post("/register", (req, res) => {
+  const user = sanitise(req.body.username);
+  if (findUser(user)) {
+    res.send(`User ${req.body.username} already exists`);
     return;
   }
-  const user = req.params.user;
-  const password = req.params.password;
+  const hash = bcrypt.hashSync(req.body.password, saltRounds);
   const views = 0;
   req.session.user = user;
-  user_views.push({ user, password, views });
+  user_views.push({ user, hash, views });
   writeUserViewFile();
-  res.send(`User ${user} created & logged in`);
+  req.session.save((err) => {
+    if (err) {
+      res.send('Cookie saving error, <a href="/login">try again</a>`');
+    } else {
+      res.redirect("/");
+    }
+  });
 });
 
-app.get("/login/:user/:password", (req, res) => {
-  const user = findUser(req.params.user);
-  if (user && user.password === req.params.password) {
-    req.session.user = req.params.user;
-    res.send(`User ${req.params.user} logged in`);
-    return;
+app.post("/login", (req, res) => {
+  const username = sanitise(req.body.username);
+  const user = findUser(username);
+  if (user && bcrypt.compareSync(req.body.password, user.hash)) {
+    req.session.user = username;
+    req.session.save((err) => {
+      if (err) {
+        res.send('Cookie saving error, <a href="/login">try again</a>`');
+      } else {
+        res.redirect("/");
+      }
+    });
   } else {
-    res.send(`Incorrect username or password`);
+    res.send(`Incorrect username or password, <a href="/login">try again</a>`);
   }
+});
+
+app.get("/login", (req, res) => {
+  res.status(200).sendFile(__dirname + "/login.html");
+});
+
+app.get("/register", (req, res) => {
+  res.status(200).sendFile(__dirname + "/register.html");
 });
 
 app.listen(3000, () => {
