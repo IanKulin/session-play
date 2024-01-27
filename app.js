@@ -30,6 +30,12 @@ function findUser(user) {
   return user_views.find((u) => u.user === user);
 }
 
+// sanitise a string by replacing all " < and > with _ (underscore)
+// and truncating it at 20 characters
+function sanitise(str) {
+  return str.replace(/["<>]/g, "_").slice(0, 20);
+}
+
 app.use(
   session({
     secret: "your-secret-keyz", // This should be a secret, used to sign the session ID cookie
@@ -67,24 +73,31 @@ app.get("/logout", (req, res) => {
   });
 });
 
-app.get("/create/:user/:password", (req, res) => {
-  if (findUser(req.params.user)) {
-    res.send(`User ${req.params.user} already exists`);
+app.post("/register", (req, res) => {
+  const user = sanitise(req.body.username);
+  if (findUser(user)) {
+    res.send(`User ${req.body.username} already exists`);
     return;
   }
-  const user = req.params.user;
-  const hash = bcrypt.hashSync(req.params.password, saltRounds);
+  const hash = bcrypt.hashSync(req.body.password, saltRounds);
   const views = 0;
   req.session.user = user;
   user_views.push({ user, hash, views });
   writeUserViewFile();
-  res.send(`User ${user} created & logged in`);
+  req.session.save((err) => {
+    if (err) {
+      res.send('Cookie saving error, <a href="/login">try again</a>`');
+    } else {
+      res.redirect("/");
+    }
+  });
 });
 
 app.post("/login", (req, res) => {
-  const user = findUser(req.body.username);
+  const username = sanitise(req.body.username);
+  const user = findUser(username);
   if (user && bcrypt.compareSync(req.body.password, user.hash)) {
-    req.session.user = req.body.username;
+    req.session.user = username;
     req.session.save((err) => {
       if (err) {
         res.send('Cookie saving error, <a href="/login">try again</a>`');
@@ -99,6 +112,10 @@ app.post("/login", (req, res) => {
 
 app.get("/login", (req, res) => {
   res.status(200).sendFile(__dirname + "/login.html");
+});
+
+app.get("/register", (req, res) => {
+  res.status(200).sendFile(__dirname + "/register.html");
 });
 
 app.listen(3000, () => {
