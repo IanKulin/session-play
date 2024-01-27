@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css"
+    />
+    <style>
+      body {
+        margin: 20px;
+      }
+    </style>
+    <title>Register</title>
+  </head>
+  <body>
+    <!-- register form with validation to check both passwords are the same -->
+    <form
+      action="/login"
+      method="post"
+      class="container"
+      onsubmit="return validateForm()"
+    >
+      <h2>Register</h2>
+      <label for="username">Username</label>
+      <input
+        type="text"
+        name="username"
+        id="username"
+        placeholder="Username"
+        required
+      />
+      <label for="password">Password</label>
+      <input
+        type="password"
+        name="password"
+        id="password"
+        placeholder="Password"
+        required
+      />
+      <label for="password2">Confirm Password</label>
+      <input
+        type="password"
+        name="password2"
+        id="password2"
+        placeholder="Confirm Password"
+        required
+      />
+      <input type="submit" value="Login" />
+    </form>
+    <script>
+      function validateForm() {
+        const password = document.getElementById("password").value;
+        const password2 = document.getElementById("password2").value;
+        if (password !== password2) {
+          alert("Passwords do not match");
+          return false;
+        }
+        return true;
+      }
+    </script>
+  </body>
+</html>
